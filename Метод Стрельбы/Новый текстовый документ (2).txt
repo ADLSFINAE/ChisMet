@@ -1,0 +1,121 @@
+#include <iostream>
+#include <fstream>
+#include <cmath>
+
+using namespace std;
+
+class ShootingMethod {
+private:
+    double x0 = 0; // Начальная точка
+    double x1 = 1; // Конечная точка
+    double h = 0.01; // Шаг
+    double E = 1e-6; // Точность
+    ofstream out;
+
+public:
+    double f_xy(double x, double y, double z)
+        {
+            return z;
+        }
+        double z_xy(double x, double y,double z)
+        {
+            return z-y;
+        }
+
+    // Метод Рунге-Кутта 4-го порядка
+    double RungeKutta(double z0) {
+        double x = x0;
+        double y = 1; // Начальное условие y(0) = 1
+        double z = z0; // Начальное условие y'(0) = z0
+
+        while (x <= x1) {
+            // Шаги метода Рунге-Кутта
+            double k1 = h * f_xy(x, y, z);
+            double q1 = h * z_xy(x, y, z);
+
+            double k2 = h * f_xy(x + h / 2, y + k1 / 2, z + q1 / 2);
+            double q2 = h * z_xy(x + h / 2, y + k1 / 2, z + q1 / 2);
+
+            double k3 = h * f_xy(x + h / 2, y + k2 / 2, z + q2 / 2);
+            double q3 = h * z_xy(x + h / 2, y + k2 / 2, z + q2 / 2);
+
+            double k4 = h * f_xy(x + h, y + k3, z + q3);
+            double q4 = h * z_xy(x + h, y + k3, z + q3);
+
+            // Обновление значений
+            y += (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+            z += (q1 + 2 * q2 + 2 * q3 + q4) / 6;
+            x += h;
+        }
+
+        return y; // Возвращаем y(1)
+    }
+
+    // Метод стрельбы (если нужно)
+    double Solve() {
+        double z0_guess1 = 0; // Первое предположение для z0
+        double z0_guess2 = 1; // Второе предположение для z0
+        double y1, y2;
+
+        // Первый прогон
+        y1 = RungeKutta(z0_guess1);
+
+        // Второй прогон
+        y2 = RungeKutta(z0_guess2);
+
+        // Уточнение методом секущих
+        double z0;
+        do {
+            z0 = z0_guess2 - (y2 - cosh(2 * x1)) * (z0_guess2 - z0_guess1) / (y2 - y1);
+            z0_guess1 = z0_guess2;
+            z0_guess2 = z0;
+
+            y1 = y2;
+            y2 = RungeKutta(z0);
+        } while (abs(y2 - cosh(2 * x1)) > E);
+
+        return z0;
+    }
+
+    // Запись решения в файл
+    void SaveSolution(double z0) {
+        out.open("solution.txt");
+        double x = x0;
+        double y = 1; // Начальное условие y(0) = 1
+        double z = z0; // Начальное условие y'(0) = z0
+
+        while (x <= x1) {
+            out << x << " " << y << " " << z <<endl;
+
+            // Шаги метода Рунге-Кутта
+            double k1 = h * f_xy(x, y, z);
+            double q1 = h * z_xy(x, y, z);
+
+            double k2 = h * f_xy(x + h / 2, y + k1 / 2, z + q1 / 2);
+            double q2 = h * z_xy(x + h / 2, y + k1 / 2, z + q1 / 2);
+
+            double k3 = h * f_xy(x + h / 2, y + k2 / 2, z + q2 / 2);
+            double q3 = h * z_xy(x + h / 2, y + k2 / 2, z + q2 / 2);
+
+            double k4 = h * f_xy(x + h, y + k3, z + q3);
+            double q4 = h * z_xy(x + h, y + k3, z + q3);
+
+            // Обновление значений
+            y += (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+            z += (q1 + 2 * q2 + 2 * q3 + q4) / 6;
+            x += h;
+        }
+        out.close();
+    }
+};
+
+int main() {
+    ShootingMethod solver;
+
+    double z0 = solver.Solve();
+    cout << "Найденное начальное значение y'(0): " << z0 << endl;
+
+    solver.SaveSolution(z0);
+
+    return 0;
+}
