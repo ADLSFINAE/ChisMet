@@ -1,0 +1,163 @@
+#include <iostream>
+#include <vector>
+#include <cmath>
+
+using namespace std;
+
+// приведение матрицы коэффициентов к виду с ненулевой диагональю и соответствующее изменение вектора правых частей
+// возвращает true - если приведение - успешно
+bool getDiagonal( double **coefficients, double *rightPart, int currColumn, int numberOfEquation ) {
+    bool result = false;
+    int i, row = currColumn;
+    double tempItem;
+
+    // для матрицы 1x1 ответом является ненулевость ее единственного элемента
+    if ( currColumn == numberOfEquation - 1 ) {
+        result = coefficients[currColumn][currColumn] != 0;
+    }
+    else {
+        // пока не найдена перестановка приводящая матрицу к виду с ненулевой диагональю и пока мы можем еще просматривать строки ищем перестановку
+        while ( !result && row < numberOfEquation ) {
+            // если текущий элемент на диагонали нулевой ищем в столбце дальше ненулевой
+            if ( coefficients[row][currColumn] != 0 ) {
+                // если элемент ненулевой и не лежит на диагонали меняем местами сотвествующие строки в матрице и элементы в векторе прваых частей
+                if ( row != currColumn ) {
+                    for ( i = 0; i < numberOfEquation; i++ ) {
+                        tempItem = coefficients[currColumn][i];
+                        coefficients[currColumn][i] = coefficients[row][i];
+                        coefficients[row][i] = tempItem;
+                    }
+                    tempItem = rightPart[currColumn];
+                    rightPart[currColumn] = rightPart[row];
+                    rightPart[row] = tempItem;
+                }
+                // рекурсивный вызов фактически для подматрицы с размерностью на 1 меньше
+                result = getDiagonal( coefficients, rightPart, currColumn + 1, numberOfEquation );
+                if (result) {
+                    break;
+                }
+            }
+            row ++;
+        }
+    }
+
+    return result;
+}
+
+
+int iteration( double **coefficients, double *rightPart, int numberOfEquation, double *solution, double precision ) {
+    bool result;
+    int i, j, k, step = 1;
+    double temp;
+    double* tempSolution;
+
+    tempSolution = new double[numberOfEquation];
+
+    
+    result = getDiagonal( coefficients, rightPart, 0, numberOfEquation );
+
+   
+    if ( result ) {
+        double fault = precision + 1;
+
+        
+        for ( i = 0; i < numberOfEquation; i ++ ) {
+            for ( j = 0; j < numberOfEquation; j ++ ) {
+                if ( i != j ) {
+                    coefficients[i][j] = - coefficients[i][j] / coefficients[i][i];
+                }
+            }
+            rightPart[i] = rightPart[i] / coefficients[i][i];
+            coefficients[i][i] = 0;
+        }
+
+        
+        for ( i = 0; i < numberOfEquation; i ++ ) {
+            solution[i] = rightPart[i];
+        }
+
+        
+        while ( fault > precision && step <= 1000 ) {
+
+            
+            for ( j = 0; j < numberOfEquation; j ++ ) {
+                tempSolution[j] = 0;
+            }
+            for ( i = 0; i < numberOfEquation; i ++ ) {
+                for ( j = 0; j < i; j ++ ) {
+                    tempSolution[i] = tempSolution[i] + coefficients[i][j] * tempSolution[j];
+                }
+                for ( j = i; j < numberOfEquation; j ++ ) {
+                    tempSolution[i] = tempSolution[i] + coefficients[i][j] * solution[j];
+                }
+                tempSolution[i] = tempSolution[i] + rightPart[i];
+            }
+
+            
+            fault = 0;
+            for ( j = 0; j < numberOfEquation; j ++ ) {
+                fault = fault + (solution[j] - tempSolution[j])*(solution[j] - tempSolution[j]);
+            }
+            fault = sqrt( fault );
+
+            
+            for ( j = 0; j < numberOfEquation; j ++ ) {
+                solution[j] = tempSolution[j];
+            }
+            step++;
+        }
+    }
+    else {
+        result = 1001;
+    }
+
+
+    return step;
+}
+
+
+int main() {
+    int i, j;
+    int size;
+    double **coefficients, *rightPart, *solution, precision;
+
+    cout<<"SIMPLE ITER METHOD:";
+    cout << "Enter system dimension: ";
+    cin >> size;
+
+    coefficients = new double*[size];
+    for ( i = 0; i < size; i++ ) {
+        coefficients[i] = new double[size];
+    }
+    rightPart = new double[size];
+    solution = new double[size];
+
+    for ( i = 0; i < size; i ++ ){
+        cout << "Enter " << i + 1 << " row: ";
+        for ( j = 0; j < size; j ++ ){
+            cin >> coefficients[i][j];
+        }
+    }
+
+    cout << "Enter Y part: ";
+    for ( j = 0; j < size; j ++ ){
+        cin >> rightPart[j];
+    }
+
+    precision = 1e-6;
+
+    int steps = iteration( coefficients, rightPart, size, solution, precision );
+    if ( steps > 1000 ) {
+        cout << "Solution for this matrix of coefficients not exist or not found";
+    }
+    else {
+        cout << "Solution is:\n";
+        for ( j = 0; j < size; j ++ ){
+            cout << solution[j] << "\n";
+        }
+        cout << "Number of step: " << steps<<endl;
+        cout<<((solution[0])*4+(solution[1])*0.5+(solution[2])*1.1)<<endl;
+        cout<<((solution[0])*0.3+(solution[1])*3.7+(solution[2])*0.1)<<endl;
+        cout<<((solution[0])*0.7+(solution[1])*0.4+(solution[2])*7.8)<<endl;
+    }
+}
